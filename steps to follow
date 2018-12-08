@@ -1,0 +1,176 @@
+Example of setup and use kitchen-docker, kitchen-inspec in chef
+==================================================
+
+
+1.  Have your system
+
+2.  yum groupinstall "Development Tools"
+
+3. yum install gem ruby-devel docker 
+
+4. Update ruby to 2.5
+
+   curl -sSL https://rvm.io/mpapis.asc | gpg --import -
+
+   curl -L get.rvm.io | bash -s stable
+
+   source /etc/profile.d/rvm.sh
+   rvm reload
+
+   rvm requirements run
+
+   rvm install 2.5
+
+   rvm list
+
+   rvm use 2.5 --default
+
+   ruby --version
+
+5. systemctl start docker
+
+   systemctl status docker
+
+  
+
+6. gem install berkshelf
+
+7. gem install kitchen
+
+8.   gem install test-kitchen
+9.   gem install kitchen-docker
+10.  gem install kitchen-inspec
+
+11.  gem install rubygems-update
+
+     update_rubygems
+
+12.  gem list
+
+     chef -v && kitchen -v && chef gem list inspec
+
+
+   
+
+============= 
+
+chef generate cookbook setup_env1
+
+vim setup_env1/recipes/default.rb  (add below lines for example)
+
+package "httpd" do
+  action :install
+end
+service "httpd" do
+  action [:enable, :start]
+end
+user "priyadarshee" do
+  action :create
+end
+package "git" do
+  action :install
+end
+file "/tmp/test.txt" do
+  action :create
+end
+
+=====>>>>>>>>>>>>>>>>
+cat recipes/random.rb 
+
+
+package "wget" do
+  action :install
+end
+user "barun" do
+  action :create
+end
+
+
+ 
+================ cd setup_env1, vim .kitchen.yml
+---
+driver:
+  name: docker
+  use_sudo: false
+provisioner:
+  name: chef_zero
+  always_update_cookbooks: true
+verifier:
+    name: inspec
+platforms:
+  - name: centos-7
+    driver:
+      forward:
+        - 80:80
+    driver_config:
+      image: centos/systemd
+      run_command: /usr/sbin/init
+      privileged: true
+      provision_command:
+        - sed -i 's/UsePAM yes/UsePAM no/g' /etc/ssh/sshd_config
+        - systemctl enable sshd.service
+        - yum install net-tools -y 
+  - name: centos-6
+    driver:
+      disable_upstart: false
+      run_command: /sbin/init
+      provision_command:
+        - yum install net-tools -y
+      forward:
+        - 90:80
+suites:
+  - name: default
+    run_list:
+      - recipe[setup_env1::default]
+      - recipe[setup_env1::random]
+    verifier:
+      inspec_tests:
+        - test/integration/default
+    attributes:
+
+
+====
+ cat test/integration/default/default_test.rb 
+
+
+describe package('httpd') do
+  it { should be_installed }
+end
+describe package('htttttttpd') do
+  it { should be_installed }
+end
+describe package('wget') do
+  it { should be_installed }
+end
+describe package('git') do
+  it { should be_installed }
+end
+describe user('priyadarshee') do
+  it { should exist }
+end
+describe user('barun') do
+  it { should exist }
+end
+describe user('santanu') do
+  it { should exist }
+end
+describe service('httpd') do
+  it { should be_running }
+end
+describe port(80) do
+  it { should be_listening }
+end
+describe port(22) do
+  it { should be_listening }
+end
+
+
+
+kitchen list
+kitchen create
+kitchen converge
+kitchen destroy
+
+
+
+
